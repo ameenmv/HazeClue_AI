@@ -1,0 +1,449 @@
+# 🎓 HazeClue — تحليل شامل لمشروع التخرج وخطة الإنهاء
+
+## نظرة عامة على المشروع
+
+HazeClue هو نظام متكامل لتحليل إشارات المخ (EEG) في الوقت الحقيقي لتصنيف حالة التركيز الذهني. المشروع مكوّن من **5 repositories**:
+
+| # | Repository | التقنية | الغرض |
+|---|-----------|---------|-------|
+| 1 | **HazeClue_AI** | Python (NumPy, SciPy, PyRiemann, sklearn) | نظام AI لتحليل EEG — RARD-MVES v2.2 |
+| 2 | **HazeClue_flutter** | Flutter/Dart | تطبيق موبايل للمستخدم النهائي |
+| 3 | **Haze_clue_backend_mobile** | .NET 8 / C# (Clean Architecture) | Backend خاص بالموبايل (SQL Server) |
+| 4 | **Haze_clue_backend** | NestJS / TypeScript | Backend خاص بالويب (MongoDB) |
+| 5 | **Haze_clue_website** | Nuxt 4 / Vue 3 / TypeScript | منصة ويب للمدرسين (Dashboard) |
+
+---
+
+## 📊 ملخص الحالة العامة
+
+```mermaid
+pie title نسبة الإنجاز التقريبية لكل مكوّن
+    "AI (85%)" : 85
+    "Flutter (80%)" : 80
+    "Backend Mobile .NET (75%)" : 75
+    "Backend Web NestJS (80%)" : 80
+    "Website Nuxt (85%)" : 85
+```
+
+---
+
+## 1️⃣ HazeClue_AI — نظام الذكاء الاصطناعي (85%)
+
+### ✅ ما تم إنجازه
+
+| الملف | الوظيفة | الحالة |
+|-------|---------|--------|
+| `data/loaders/stew_loader.py` | تحميل STEW Dataset (48 subject, 128Hz) | ✅ شغال |
+| `data/loaders/mendeley_loader.py` | تحميل Mendeley Dataset (30 subject, EDF) | ✅ شغال |
+| `data/dataset.py` | توحيد + GroupKFold | ✅ شغال |
+| `preprocessing/bandpass.py` | Butterworth 1-40Hz + DWT Wavelet | ✅ شغال |
+| `preprocessing/sqi.py` | Signal Quality Index per channel | ✅ شغال |
+| `preprocessing/covariance.py` | Raw→SQI→Ledoit-Wolf→SPD | ✅ شغال |
+| `preprocessing/alignment.py` | Euclidean Alignment | ✅ شغال |
+| `preprocessing/wavelet_denoise.py` | DWT-based EOG artifact removal | ✅ شغال |
+| `routing/mode_router.py` | RARD/MVES/SAFE switching | ✅ شغال |
+| `features/rard_features.py` | Tangent space → 105 features | ✅ شغال |
+| `features/mves_features.py` | Bandpower+Hjorth+Corr → 203 features | ✅ شغال |
+| `features/csp_features.py` | Filter Bank CSP | ✅ شغال |
+| `training/train.py` | Training pipeline v1 | ✅ شغال |
+| `training/train_v2.py` | Unified 3-level pipeline (Within/Adaptive/Cross) | ✅ شغال |
+| `inference/engine.py` | Real-time inference engine | ✅ smoke tested |
+| `inference/personalization.py` | Dual-timescale adaptation | ✅ smoke tested |
+| `export/export_onnx.py` | ONNX export for Flutter | ⚠️ مكتوب لم يُختبر |
+| `models/eegnet.py` | EEGNet + ShallowConvNet | ⚠️ مكتوب — محتاج PyTorch |
+| `main.py` | Entry point | ✅ شغال |
+
+### نتائج التدريب المحققة
+
+| التقييم | Accuracy | ملاحظة |
+|---------|----------|--------|
+| **Within-Subject** | **99.6% ± 1.1%** | 🏆 الأفضل |
+| **Subject-Adaptive** (30% calibration) | **83.5% ± 12.4%** | 🎯 عملي |
+| **Cross-Subject** | **78.6% ± 4.2%** | ✅ بعد EA |
+
+### ❌ الناقص في AI
+
+> [!CAUTION]
+> **أولوية قصوى — بدون دي المشروع مش هيشتغل end-to-end:**
+
+1. **`api/inference_endpoint.py` — FastAPI REST Endpoint** ❌ غير موجود
+   - المفروض يستقبل EEG window من الـ backend ويرد classification + confidence
+   - ده الربط الحقيقي بين AI والباقي
+   - الملف `api/__init__.py` فاضي تماماً
+
+2. **اختبار ONNX Export** ⚠️ لم يُختبر فعلياً
+   - الكود مكتوب في `export/export_onnx.py` لكن لم يتم تشغيله
+   - لازم يتشغل ويتأكد إن الـ ONNX models صحيحة
+
+3. **ملفات Tests** ❌ فاضية
+   - `tests/__init__.py` فاضي — مفيش ولا test case واحد
+   - المفروض على الأقل unit tests للـ preprocessing pipeline
+
+4. **Confusion Matrix / ROC Visualization** ❌ مش موجود
+   - مطلوب للعرض في المناقشة
+
+5. **EEGNet (Deep Learning)** ⚠️ مكتوب لم يُختبر
+   - محتاج PyTorch — ممكن يكون bonus مش أساسي
+
+---
+
+## 2️⃣ HazeClue_flutter — تطبيق الموبايل (80%)
+
+### ✅ ما تم إنجازه (30 شاشة!)
+
+| الشاشة | الوظيفة | الحالة |
+|--------|---------|--------|
+| `splash_screen.dart` | شاشة البداية | ✅ |
+| `intro_screen.dart` | شاشات تعريفية | ✅ |
+| `sign_in_screen.dart` | تسجيل دخول | ✅ |
+| `sign_up_screen.dart` | تسجيل حساب | ✅ |
+| `forgot_password_screen.dart` | نسيت كلمة السر | ✅ |
+| `verify_code_screen.dart` | التحقق من OTP | ✅ |
+| `new_password_screen.dart` | كلمة سر جديدة | ✅ |
+| `dashboard_screen.dart` | الصفحة الرئيسية | ✅ |
+| `sessions_screen.dart` | قائمة الجلسات | ✅ |
+| `insights_screen.dart` | تحليلات الأداء | ✅ |
+| `training_screen.dart` | تمارين التركيز | ✅ |
+| `profile_screen.dart` | البروفايل | ✅ |
+| `edit_profile_screen.dart` | تعديل البروفايل | ✅ |
+| `my_devices_screen.dart` | الأجهزة | ✅ |
+| `notification_inbox_screen.dart` | الإشعارات | ✅ |
+| `notifications_screen.dart` | إعدادات الإشعارات | ✅ |
+| `account_security_screen.dart` | أمان الحساب | ✅ |
+| `change_password_screen.dart` | تغيير كلمة السر | ✅ |
+| `tdcs_consent_screen.dart` | موافقة tDCS | ✅ |
+| `tdcs_session_screen.dart` | جلسة tDCS | ✅ |
+| `personal_health_assessment.dart` | تقييم صحي | ✅ |
+| `concentration_puzzle_screen.dart` | لعبة تركيز | ✅ |
+| `memory_training_screen.dart` | تمرين ذاكرة | ✅ |
+| `help_support_screen.dart` | مساعدة ودعم | ✅ |
+| `contact_us_screen.dart` | اتصل بنا | ✅ |
+| `privacy_policy_screen.dart` | سياسة الخصوصية | ✅ |
+| `survey_intro_screen.dart` | مقدمة استبيان | ✅ |
+
+### خدمات الموبايل
+
+| الخدمة | الوظيفة | الحالة |
+|--------|---------|--------|
+| `api_service.dart` | كل API calls (~45 method) | ✅ |
+| `signalr_service.dart` | Real-time data streaming | ✅ |
+| `smartwatch_service.dart` | بيانات الساعة الذكية | ✅ |
+| `device_data_service.dart` | بيانات الأجهزة | ⚠️ أساسي |
+
+### ❌ الناقص في Flutter
+
+> [!WARNING]
+> **حاجات مهمة ناقصة:**
+
+1. **ربط ONNX Runtime** ❌ لم يتم
+   - مفيش `onnxruntime_flutter` في `pubspec.yaml`
+   - مفيش أي كود لتشغيل الموديل على الجهاز
+   - ده المفروض يكون القلب — on-device AI inference
+
+2. **ربط EEG Device (BLE)** ❌ لم يتم
+   - مفيش `flutter_blue_plus` أو أي BLE package
+   - مفيش كود لقراءة بيانات NPG Lite أو EMOTIV
+   - `device_data_service.dart` أساسي جداً (1.3 KB فقط)
+
+3. **Live Session مع AI** ❌ لم يتم
+   - الـ `SignalRService` بيبعت `concentration` لكن مفيش كود بيحسب الـ concentration فعلياً من EEG
+   - ده مجرد placeholder
+
+4. **State Management** ⚠️ بسيط
+   - مفيش Provider/Riverpod/Bloc — كل حاجة بـ `StatefulWidget`
+   - مقبول لمشروع تخرج لكن ممكن يتسأل فيه
+
+5. **Offline Support** ❌ مش موجود
+   - مفيش local database (Hive/SQLite)
+   - التطبيق بيعتمد 100% على الـ backend
+
+---
+
+## 3️⃣ Haze_clue_backend_mobile — Backend الموبايل (75%)
+
+### ✅ ما تم إنجازه
+
+**Architecture: Clean Architecture (3-tier)**
+- `HazeClue.Core` → Domain entities + contracts
+- `HazeClue.Infrastructure` → DB Context + Repositories (SQL Server)
+- `HazeClue.UI` → Controllers + DTOs + Hubs
+
+**Controllers (11 endpoint groups):**
+
+| Controller | الوظيفة | الحالة |
+|-----------|---------|--------|
+| `AccountController.cs` | Auth (Register, Login, OTP, Reset) | ✅ |
+| `UsersController.cs` | Profile, Settings | ✅ |
+| `SessionsController.cs` | CRUD + Start/Pause/Resume/Complete | ✅ |
+| `DevicesController.cs` | إدارة الأجهزة | ✅ |
+| `DashboardController.cs` | إحصائيات | ✅ |
+| `NotificationsController.cs` | الإشعارات | ✅ |
+| `AssessmentsController.cs` | Health + tDCS Consent | ✅ |
+| `InsightsController.cs` | تحليلات ذكية | ✅ |
+| `SmartwatchController.cs` | بيانات الساعة الذكية | ✅ |
+| `SupportController.cs` | تذاكر الدعم | ✅ |
+
+**Entities (14 models):**
+`AppUser`, `FocusSession`, `Device`, `DeviceSetting`, `AppNotification`, `NotificationSetting`, `ConsentRecord`, `HealthAssessment`, `PuzzleResult`, `SecurityLog`, `SmartwatchData`, `UserInsight`, `UserSession`, `BaseClass`
+
+**Real-time:** SignalR Hub (`SessionHub.cs`) ✅
+
+### ❌ الناقص في Mobile Backend
+
+> [!WARNING]
+
+1. **ربط AI Service** ❌ غير موجود
+   - مفيش أي كود بيتواصل مع AI Python service
+   - المفروض يكون في HTTP client يبعت EEG data لـ FastAPI ويستقبل classification
+
+2. **Tests فاضية** ⚠️
+   - `HazeClue.ControllerTests` — فيه فقط `.csproj` بدون test files فعلية
+   - `HazeClue.IntegrationTests` و `HazeClue.ServiceTests` — نفس الحالة
+
+3. **Dockerfile** ✅ موجود لكن لم يُختبر deployment
+
+4. **Email Service** ⚠️ غير واضح
+   - مفيش `nodemailer` equivalent واضح — OTP بيتبعت ازاي؟
+
+---
+
+## 4️⃣ Haze_clue_backend — Backend الويب (80%)
+
+### ✅ ما تم إنجازه
+
+**Architecture:** NestJS Modular (MongoDB + Mongoose)
+
+**Modules (12):**
+
+| Module | الوظيفة | الحالة |
+|--------|---------|--------|
+| `AuthModule` | JWT Auth, OAuth (Google/Facebook), OTP | ✅ |
+| `UsersModule` | Profile CRUD | ✅ |
+| `SessionsModule` | Session CRUD + Start/End | ✅ |
+| `DevicesModule` | Device registration + status | ✅ |
+| `ReportsModule` | Report generation (PDF!) | ✅ |
+| `DashboardModule` | Stats + Recent Activity | ✅ |
+| `GatewayModule` | Telemetry data ingestion | ✅ |
+| `NotificationsModule` | Real-time notifications | ✅ |
+| `PusherModule` | Real-time events (Pusher) | ✅ |
+| `LookupsModule` | Static data | ✅ |
+| `SupportModule` | Support tickets + Email | ✅ |
+
+**Features الجاهزة:**
+- ✅ JWT + OAuth (Google/Facebook)
+- ✅ Rate Limiting (Throttler)
+- ✅ Helmet security
+- ✅ Nodemailer for emails
+- ✅ PDF Report generation (PDFKit)
+- ✅ Pusher real-time (بديل Socket.IO)
+- ✅ File upload (Multer)
+- ✅ Postman Collection
+
+### ❌ الناقص في Web Backend
+
+> [!IMPORTANT]
+
+1. **ربط AI Service** ❌ غير موجود
+   - نفس المشكلة — مفيش HTTP proxy/client لـ Python AI
+   - الـ `GatewayModule` بيستقبل telemetry لكن مش بيحللها بـ AI
+
+2. **WebSocket Gateway** ⚠️ بقى Pusher
+   - الـ migration من Socket.IO لـ Pusher تمت لكن الـ `eeg.gateway.ts` الأصلي اتشال
+   - الـ `telemetry.controller.ts` موجود بس بيخزن فقط مش بيحلل
+
+3. **Report Generation مع AI data** ⚠️
+   - الـ reports بتتولد بـ simulated/mock data
+   - المفروض تتبني على نتائج AI فعلية
+
+---
+
+## 5️⃣ Haze_clue_website — منصة الويب (85%)
+
+### ✅ ما تم إنجازه
+
+**Pages:**
+
+| الصفحة | الوظيفة | الحالة |
+|--------|---------|--------|
+| Landing Page | صفحة هبوط احترافية (GSAP animations) | ✅ |
+| Login/Register/Forgot/Verify/Reset | Auth flow كامل | ✅ |
+| Dashboard Home | إحصائيات + Charts + Quick Actions | ✅ |
+| Sessions (List + Create wizard) | إدارة الجلسات | ✅ |
+| Devices | إدارة الأجهزة (paginated table) | ✅ |
+| Live Session | مراقبة جلسة حية | ✅ |
+| Live Monitoring | Pre-session setup | ✅ |
+| Reports | تقارير مولدة | ✅ |
+| Profile | ملف شخصي | ✅ |
+| Settings | إعدادات الحساب | ✅ |
+| Help Center | مساعدة + FAQ | ✅ |
+
+**Infrastructure:**
+- ✅ Nuxt 4 + TypeScript
+- ✅ i18n (Arabic + English) — RTL/LTR
+- ✅ Dark/Light mode
+- ✅ Auth middleware (guest/auth)
+- ✅ Pusher real-time integration
+- ✅ Pinia state management
+- ✅ Zod validation
+- ✅ PM2 deployment config
+- ✅ 9 service files (auth, sessions, devices, reports, dashboard, notifications, users, lookups, support)
+
+### ❌ الناقص في Website
+
+1. **Live EEG Visualization بيانات حقيقية** ⚠️
+   - الـ Live Session components موجودة لكن بتشتغل على simulated data
+   - لازم تتربط بـ Pusher events حقيقية من الـ EEG device
+
+2. **Heatmap Visualization** ❌ غير موجود
+   - من أهم الـ features المذكورة في الـ README
+   - مفيش component لعرض attention heatmap على المحتوى التعليمي
+
+3. **Student Group Management** ⚠️ جزئي
+   - الـ sessions بتدعم students count لكن مفيش فعلياً student enrollment
+
+---
+
+## 🔴 الأولويات الحرجة للمناقشة
+
+> [!CAUTION]
+> ### Top 5 — لازم تتعمل قبل المناقشة:
+
+### 1. FastAPI Inference Endpoint (AI)
+```
+المكان: HazeClue_AI/api/inference_endpoint.py
+المطلوب: REST API يستقبل EEG window → يرد classification + confidence
+التقدير: 2-3 ساعات
+```
+
+### 2. Integration Demo (End-to-End)
+```
+المطلوب: سيناريو واحد شغال من الأول للآخر:
+  Mobile → sends EEG → Backend → calls AI → returns result → Mobile shows it
+ده أهم حاجة في المناقشة — إثبات إن النظام بيشتغل كوحدة واحدة
+التقدير: 4-6 ساعات
+```
+
+### 3. ONNX Export + Verification (AI)
+```
+المطلوب: تشغيل export_onnx.py + التأكد من accuracy
+التقدير: 1-2 ساعات
+```
+
+### 4. Evaluation Report + Visualizations (AI)
+```
+المطلوب: Confusion Matrix, ROC Curve, Feature Importance
+ده هيكون جزء من العرض
+التقدير: 2-3 ساعات
+```
+
+### 5. README + Documentation Update
+```
+المطلوب: تحديث كل README files + system architecture diagram
+التقدير: 2-3 ساعات
+```
+
+---
+
+## 🟡 أولوية متوسطة
+
+| # | المهمة | المكان | التقدير |
+|---|--------|--------|---------|
+| 6 | Unit Tests للـ AI Pipeline | `HazeClue_AI/tests/` | 3-4 ساعات |
+| 7 | BLE Device Integration (Mock) | Flutter `device_data_service.dart` | 3-4 ساعات |
+| 8 | ONNX Runtime في Flutter | Flutter `pubspec.yaml` + service | 3-4 ساعات |
+| 9 | AI Proxy في .NET Backend | `Haze_clue_backend_mobile` | 2-3 ساعات |
+| 10 | AI Proxy في NestJS Backend | `Haze_clue_backend` | 2-3 ساعات |
+
+---
+
+## 🟢 أولوية منخفضة (Nice to have)
+
+| # | المهمة | التقدير |
+|---|--------|---------|
+| 11 | Heatmap Visualization للموقع | 4-5 ساعات |
+| 12 | EEGNet Deep Learning training | 4-6 ساعات |
+| 13 | Offline support في Flutter | 3-4 ساعات |
+| 14 | .NET + NestJS integration tests | 4-5 ساعات |
+| 15 | Docker Compose لكل الخدمات | 2-3 ساعات |
+
+---
+
+## 📐 System Architecture (الحالي vs المطلوب)
+
+```mermaid
+graph TB
+    subgraph "الموجود ✅"
+        A["🧠 EEG Device<br/>(NPG Lite / EMOTIV)"]
+        B["📱 Flutter App<br/>(30 screens)"]
+        C["🔧 .NET Backend<br/>(SQL Server + SignalR)"]
+        D["🐍 AI Service<br/>(Python - RARD/MVES)"]
+        E["🌐 Nuxt Website<br/>(Dashboard + Live)"]
+        F["⚡ NestJS Backend<br/>(MongoDB + Pusher)"]
+    end
+
+    subgraph "الناقص ❌"
+        G["🔗 BLE Connection<br/>(Flutter ↔ Device)"]
+        H["🔗 AI REST API<br/>(FastAPI Endpoint)"]
+        I["🔗 Backend→AI Proxy<br/>(.NET / NestJS → Python)"]
+        J["📊 ONNX on-device<br/>(Flutter Runtime)"]
+    end
+
+    A -.->|"❌ مفيش BLE code"| B
+    B -->|"✅ HTTP"| C
+    C -.->|"❌ مفيش proxy"| D
+    B -.->|"❌ مفيش ONNX"| J
+    E -->|"✅ HTTP Proxy"| F
+    F -.->|"❌ مفيش proxy"| D
+    D -.->|"❌ مفيش endpoint"| H
+
+    style G fill:#ff6b6b,color:#fff
+    style H fill:#ff6b6b,color:#fff
+    style I fill:#ff6b6b,color:#fff
+    style J fill:#ff6b6b,color:#fff
+```
+
+---
+
+## 💡 نصائح للمناقشة
+
+> [!TIP]
+> ### نقاط القوة اللي تركز عليها:
+
+1. **Hybrid AI System (RARD-MVES)** — مفيش حد عمل نظام بيتنقل بين Riemannian و Statistical بناءً على جودة الإشارة. ده contribution أصيلة
+2. **78.6% Cross-Subject Accuracy** — ده رقم ممتاز مقارنة بالأبحاث (60-70% على EMOTIV)
+3. **99.6% Within-Subject** — بيثبت إن النظام هيشتغل كويس مع calibration
+4. **Full-Stack Architecture** — 5 repos, 3 backends, 2 frontends — ده مشروع ضخم
+5. **الـ Personalization Engine** — Dual-timescale adaptation (fast on-device + slow server-side)
+6. **الموقع bilingual** — Arabic + English مع RTL support
+
+> [!WARNING]
+> ### نقاط ممكن يتسأل فيها:
+
+1. "ايه الربط الفعلي بين الـ AI والتطبيق؟" — لازم يكون عندك demo ولو simulated
+2. "ليه في 2 backends؟" — الإجابة: .NET للموبايل (SQL Server, SignalR) + NestJS للويب (MongoDB, Pusher) — اختيار based on team skills
+3. "ليه مش end-to-end demo؟" — لو مقدرتش تربط كل حاجة، قول إن كل component مستقل و اتعمل integration testing لكل واحد لوحده
+4. "ايه الـ testing strategy؟" — ده ضعيف حالياً — لازم على الأقل AI pipeline tests
+
+---
+
+## ⏱️ تقدير الوقت المطلوب
+
+| الأولوية | المهام | الوقت التقريبي |
+|---------|--------|---------------|
+| 🔴 حرجة | #1-5 | **12-17 ساعة** |
+| 🟡 متوسطة | #6-10 | **14-18 ساعة** |
+| 🟢 منخفضة | #11-15 | **17-23 ساعة** |
+| **المجموع** | | **~43-58 ساعة** |
+
+> [!IMPORTANT]
+> لو المناقشة الأسبوع الجاي، ركز على **الأولويات الحرجة (#1-5) فقط**. الـ 12-17 ساعة ممكن تتعمل في 2-3 أيام شغل مركّز.
+
+---
+
+## Open Questions
+
+1. **هل المطلوب demo شغال end-to-end ولا ممكن تقدم كل component لوحده؟** — ده هيأثر على الأولويات
+2. **هل عندك الـ trained models (`.joblib` + `P_ref.npy`) ولا محتاج تعيد التدريب؟** — لو مش موجودين هتحتاج الداتا + وقت تدريب (~25 دقيقة)
+3. **هل لسه محتاج الـ tDCS feature ولا ممكن تكون optional في العرض؟** — لأن مفيش hardware فعلي
+4. **هل عندك EEG device متاح للـ demo ولا هنعمل simulated data؟** — لو simulated، هنعمل mock service بيبعت EEG data
+5. **المناقشة هتكون presentation + live demo ولا presentation بس؟** — ده هيحدد لو محتاجين deployment
